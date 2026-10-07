@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ente
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ente-tasks}
+      POSTGRES_DB: ente_tasks
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ente -d ente_tasks"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://ente:${POSTGRES_PASSWORD:-ente-tasks}@db:5432/ente_tasks
+      # Change this for any real deployment (e.g. `openssl rand -hex 32`).
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:80"
+    depends_on:
+      - api
+
+volumes:
+  db-data:
